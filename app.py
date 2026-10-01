@@ -145,10 +145,14 @@ with st.sidebar:
         step=1
     )
     
-    if min_p >= max_p:
+    valid_promise_range = min_p < max_p
+    if not valid_promise_range:
         st.error("Error: Min Promise must be strictly less than Max Promise.")
         
-    candidate_promises = list(range(int(min_p), int(max_p) + 1, int(step_p)))
+    candidate_promises = (
+        list(range(int(min_p), int(max_p) + 1, int(step_p)))
+        if valid_promise_range else []
+    )
     
     st.subheader("3. Unit Economic Parameters")
     param_margin = st.number_input(
@@ -199,11 +203,15 @@ with st.sidebar:
     execute_button = st.button(
         "Calculate Best Promise",
         type="primary",
-        use_container_width=True
+        use_container_width=True,
+        disabled=not valid_promise_range
     )
 
 # Execution State Management
 if "has_run" not in st.session_state:
+    st.session_state.has_run = False
+
+if not valid_promise_range:
     st.session_state.has_run = False
 
 if execute_button:
@@ -226,7 +234,10 @@ st.markdown(
 )
 
 if not st.session_state.has_run:
-    st.info("Select parameters in the sidebar and click **Calculate Best Promise** to execute the optimization model.")
+    if valid_promise_range:
+        st.info("Select parameters in the sidebar and click **Calculate Best Promise** to execute the optimization model.")
+    else:
+        st.info("Set Min Promise below Max Promise to calculate a recommendation.")
 else:
     with st.spinner("Executing simulation sweeps across candidate delivery promises..."):
         results = choose_best_promise(
@@ -341,7 +352,7 @@ else:
                 ### Core Operational Takeaways
                 
                 1. **Penalty Mitigation**: By moving the delivery promise from **{int(base_row['Promise (min)'])} min** to **{int(opt_row['Promise (min)'])} min**, delinquent deliveries decline from **{int(base_row['Late Orders'])}** to **{int(opt_row['Late Orders'])}**, dropping late delivery rates by **{abs(rate_delta):.2f}%**.
-                2. **Financial Turnaround**: Total delinquency liabilities decrease by **${base_row['Late Costs ($)'] - opt_row['Late Costs ($)']:,.2f}**. Although demand contracts by **{int(base_row['Total Orders'] - opt_row['Total Orders'])}** orders, the massive reduction in penalties produces a net profit gain of **${profit_delta:+,.2f}** over four weeks.
+                2. **Financial Turnaround**: Total delinquency liabilities decrease by **\\${base_row['Late Costs ($)'] - opt_row['Late Costs ($)']:,.2f}**. Although demand contracts by **{int(base_row['Total Orders'] - opt_row['Total Orders'])}** orders, the massive reduction in penalties produces a net profit gain of **\\${profit_delta:+,.2f}** over four weeks.
                 3. **Strategic Alignment**: This shift prevents customer churn and protects the brand reputation without requiring additional capital expenditure or driver headcount.
                 """
             )
